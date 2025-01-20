@@ -1,3 +1,4 @@
+// Package client реализация tcp клиента
 package client
 
 import (
