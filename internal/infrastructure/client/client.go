@@ -12,6 +12,8 @@ import (
 	"database/internal/entity/iohelper"
 )
 
+var prompt = []byte("> ")
+
 func Run(logger *slog.Logger, hostPort string) {
 	conn, err := net.Dial("tcp", hostPort)
 	if err != nil {
@@ -38,6 +40,8 @@ func Run(logger *slog.Logger, hostPort string) {
 
 	writeBuf := make([]byte, 512)
 	readBuf := make([]byte, 0, 512)
+
+	_, _ = os.Stdout.Write(prompt)
 
 	for {
 		n, err := os.Stdin.Read(writeBuf)
@@ -66,5 +70,6 @@ func Run(logger *slog.Logger, hostPort string) {
 
 		response = append(response, '\n')
 		_, _ = os.Stdout.Write(response)
+		_, _ = os.Stdout.Write(prompt)
 	}
 }

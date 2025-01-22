@@ -6,23 +6,28 @@ import (
 	"os/signal"
 
 	"database/internal/app"
-	"go.uber.org/zap"
+	"database/internal/config"
 	"go.uber.org/zap/exp/zapslog"
 )
 
 func main() {
-	zapL := zap.Must(zap.NewDevelopment())
+	if len(os.Args) < 2 {
+		panic("config file not specified in command line")
+	}
 
+	cfg := config.Setup(os.Args[1])
+
+	zapLogger := app.NewLogger(cfg.Logger.Level)
 	defer func() {
-		_ = zapL.Sync()
+		_ = zapLogger.Sync()
 	}()
 
-	logger := slog.New(zapslog.NewHandler(zapL.Core()))
+	logger := slog.New(zapslog.NewHandler(zapLogger.Core()))
 
-	myApp := app.NewApp(logger)
+	myApp := app.NewApp(logger, &cfg)
 
 	go func() {
-		if err := myApp.Server.ListenAndServe(":8080"); err != nil {
+		if err := myApp.Server.ListenAndServe(cfg.Connection.Address); err != nil {
 			panic(err)
 		}
 	}()
@@ -35,6 +40,5 @@ func main() {
 	sig := <-stop
 
 	logger.Info("stopping app...", slog.String("signal", sig.String()))
-
 	logger.Info("service stopped")
 }

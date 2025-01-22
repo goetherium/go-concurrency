@@ -3,6 +3,8 @@ package server
 import (
 	"log/slog"
 	"net"
+
+	"database/internal/infrastructure/semaphore"
 )
 
 type connHandler interface {
@@ -11,12 +13,14 @@ type connHandler interface {
 
 type Server struct {
 	logger  *slog.Logger
+	sema    *semaphore.Semaphore
 	handler connHandler
 }
 
-func New(logger *slog.Logger, handler connHandler) *Server {
+func New(logger *slog.Logger, sema *semaphore.Semaphore, handler connHandler) *Server {
 	return &Server{
 		logger:  logger,
+		sema:    sema,
 		handler: handler,
 	}
 }
@@ -39,8 +43,13 @@ func (s Server) ListenAndServe(addr string) error {
 			continue
 		}
 
-		// todo: acquire semaphore
-		go s.handler.HandleConn(s.logger, conn)
+		s.sema.Acquire()
+
+		go func() {
+			defer s.sema.Release()
+
+			s.handler.HandleConn(s.logger, conn)
+		}()
 	}
 
 }

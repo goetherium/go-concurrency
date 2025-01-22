@@ -2,6 +2,7 @@ package connhandler
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net"
@@ -17,12 +18,16 @@ type cmdHandler interface {
 }
 
 type Handler struct {
-	cmdHandler cmdHandler
+	cmdHandler     cmdHandler
+	idleTimeout    time.Duration
+	maxMessageSize int
 }
 
-func New(cmdHandler cmdHandler) *Handler {
+func New(cmdHandler cmdHandler, idleTimeout time.Duration, maxMessageSize int) *Handler {
 	return &Handler{
-		cmdHandler: cmdHandler,
+		cmdHandler:     cmdHandler,
+		idleTimeout:    idleTimeout,
+		maxMessageSize: maxMessageSize,
 	}
 }
 
@@ -35,7 +40,8 @@ func (h Handler) HandleConn(logger *slog.Logger, conn net.Conn) {
 		_ = conn.Close()
 	}()
 
-	if err := conn.SetReadDeadline(time.Time{}); err != nil {
+	timeout := time.Now().Add(h.idleTimeout)
+	if err := conn.SetReadDeadline(timeout); err != nil {
 		logger.Error("set read deadline", slog.String("err", err.Error()))
 
 		return
@@ -64,20 +70,24 @@ func (h Handler) HandleConn(logger *slog.Logger, conn net.Conn) {
 }
 
 func (h Handler) handleCmd(logger *slog.Logger, conn net.Conn, buf []byte) error {
+	if len(buf) > h.maxMessageSize {
+		return h.write(logger, conn, fmt.Sprintf("message exceeds max size %d bytes", h.maxMessageSize))
+	}
+
 	cmd := string(buf)
 	cmd = strings.TrimRight(cmd, "\n")
 
 	resp, err := h.cmdHandler.HandleCmd(logger, cmd)
 	if err != nil {
-		if _, err = conn.Write([]byte(err.Error())); err != nil {
-			logger.Error("write to conn", slog.Any("err", err))
-
-			return err
-		}
+		return h.write(logger, conn, err.Error())
 	}
 
-	if _, err = conn.Write([]byte(resp.String())); err != nil {
-		logger.Error("write to conn", slog.Any("err", err))
+	return h.write(logger, conn, resp.String())
+}
+
+func (h Handler) write(logger *slog.Logger, conn net.Conn, data string) error {
+	if _, err := conn.Write([]byte(data)); err != nil {
+		logger.Error("failed to write to conn", slog.Any("err", err))
 
 		return err
 	}
