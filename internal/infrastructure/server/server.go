@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"log/slog"
 	"net"
 
@@ -43,7 +44,11 @@ func (s Server) ListenAndServe(addr string) error {
 			continue
 		}
 
-		s.sema.Acquire()
+		if err = s.sema.Acquire(); err != nil {
+			s.logger.Error("semaphore timeout")
+
+			return errors.New("connection timeout")
+		}
 
 		go func() {
 			defer s.sema.Release()

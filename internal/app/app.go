@@ -28,7 +28,7 @@ func NewApp(logger *slog.Logger, cfg *config.App) *App {
 	db := database.New(computer, store)
 
 	handler := connhandler.New(db, cfg.Connection.IdleTimeout, cfg.Connection.MaxMessageSize)
-	sema := semaphore.New(cfg.Connection.MaxConnections)
+	sema := semaphore.New(cfg.Connection.MaxConnections, cfg.Connection.ConnectTimeout)
 	s := server.New(logger, sema, handler)
 
 	return &App{

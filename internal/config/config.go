@@ -21,6 +21,7 @@ type connection struct {
 	Address        string        `yaml:"address"`
 	MaxConnections int           `yaml:"max_connections"`
 	MaxMessageSize int           `yaml:"max_message_size"`
+	ConnectTimeout time.Duration `yaml:"connect_timeout"`
 	IdleTimeout    time.Duration `yaml:"idle_timeout"`
 }
 
