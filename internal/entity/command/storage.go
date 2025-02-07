@@ -1,8 +1,16 @@
 package command
 
-type Key string
+type Key Arg
 
-type Value string
+func NewKey(key Arg) Key {
+	return Key(key)
+}
+
+type Value Arg
+
+func NewValue(value Arg) Value {
+	return Value(value)
+}
 
 func (v Value) String() string {
 	return string(v)

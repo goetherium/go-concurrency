@@ -11,6 +11,7 @@ type App struct {
 	Engine     engine     `yaml:"engine"`
 	Connection connection `yaml:"connection"`
 	Logger     logger     `yaml:"logger"`
+	Wal        Wal        `yaml:"wal"`
 }
 
 type engine struct {
@@ -28,6 +29,13 @@ type connection struct {
 type logger struct {
 	Level  string `yaml:"level"`
 	Output string `yaml:"output"`
+}
+
+type Wal struct {
+	FlushBatchSize    int           `yaml:"flush_batch_size"`
+	FlushBatchTimeout time.Duration `yaml:"flush_batch_timeout"`
+	FileMaxSize       uint64        `yaml:"file_max_size"`
+	DataDir           string        `yaml:"data_dir"`
 }
 
 func Setup(path string) App {

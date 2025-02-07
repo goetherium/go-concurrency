@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
+	"log"
 	"log/slog"
 	"os"
 	"os/signal"
+	"syscall"
 
 	"database/internal/app"
 	"database/internal/config"
@@ -26,6 +29,13 @@ func main() {
 
 	myApp := app.NewApp(logger, &cfg)
 
+	stopCtx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+
+	if err := myApp.Start(stopCtx); err != nil {
+		log.Fatalf("failed to start app: %v", err)
+	}
+
 	go func() {
 		if err := myApp.Server.ListenAndServe(cfg.Connection.Address); err != nil {
 			panic(err)
@@ -34,11 +44,13 @@ func main() {
 
 	logger.Info("service started")
 
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, os.Interrupt)
+	<-stopCtx.Done()
 
-	sig := <-stop
+	logger.Info("stopping app...")
 
-	logger.Info("stopping app...", slog.String("signal", sig.String()))
+	if err := myApp.Shutdown(); err != nil {
+		log.Fatalf("failed to shutdown app: %v", err)
+	}
+
 	logger.Info("service stopped")
 }

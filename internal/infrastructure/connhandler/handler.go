@@ -9,12 +9,13 @@ import (
 	"strings"
 	"time"
 
+	"database/internal/entity/command"
 	"database/internal/entity/database"
 	"database/internal/entity/iohelper"
 )
 
 type cmdHandler interface {
-	HandleCmd(logger *slog.Logger, rowCmd string) (database.HandleCmdResult, error)
+	HandleCmd(*slog.Logger, command.RawCmd) (database.HandleCmdResult, error)
 }
 
 type Handler struct {
@@ -76,8 +77,9 @@ func (h Handler) handleCmd(logger *slog.Logger, conn net.Conn, buf []byte) error
 
 	cmd := string(buf)
 	cmd = strings.TrimRight(cmd, "\n")
+	rawCmd := command.NewRawCmd(cmd)
 
-	resp, err := h.cmdHandler.HandleCmd(logger, cmd)
+	resp, err := h.cmdHandler.HandleCmd(logger, rawCmd)
 	if err != nil {
 		return h.write(logger, conn, err.Error())
 	}

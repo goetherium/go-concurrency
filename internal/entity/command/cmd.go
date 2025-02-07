@@ -4,39 +4,6 @@ import (
 	"strconv"
 )
 
-type RawCmd string
-
-const (
-	setCommand RawCmd = "SET"
-	getCommand RawCmd = "GET"
-	delCommand RawCmd = "DEL"
-)
-
-func NewRawCmd(rawCmd string) RawCmd {
-	return RawCmd(rawCmd)
-}
-
-func (r RawCmd) ToCmdID() CmdID {
-	cmdID, ok := rawCmdToCmdID[r]
-	if !ok {
-		return UnknownCommandID
-	}
-
-	return cmdID
-}
-
-func (r RawCmd) String() string {
-	return string(r)
-}
-
-var rawCmdToCmdID = map[RawCmd]CmdID{
-	setCommand: SetCommandID,
-	getCommand: GetCommandID,
-	delCommand: DelCommandID,
-}
-
-type CmdID int
-
 const (
 	UnknownCommandID CmdID = iota
 	SetCommandID
@@ -50,14 +17,89 @@ var cmdArgsCount = map[CmdID]int{
 	DelCommandID: 1,
 }
 
-func (c CmdID) ArgsCount() int {
-	return cmdArgsCount[c]
+var cmdToRawCmd = map[CmdID]RawCmd{
+	SetCommandID: setCommand,
+	GetCommandID: getCommand,
+	DelCommandID: delCommand,
 }
 
-func (c CmdID) Int() int {
-	return int(c)
+// walCmd список команд, которые нужно записывать в wal.
+var walCmd = map[CmdID]struct{}{
+	SetCommandID: {},
+	DelCommandID: {},
 }
 
-func (c CmdID) String() string {
-	return strconv.Itoa(int(c))
+type CmdID int
+
+func (id CmdID) ArgsCount() int {
+	return cmdArgsCount[id]
+}
+
+func (id CmdID) Int() int {
+	return int(id)
+}
+
+func (id CmdID) String() string {
+	return strconv.Itoa(int(id))
+}
+
+func (id CmdID) IsWalCmd() bool {
+	_, ok := walCmd[id]
+
+	return ok
+}
+
+// Cmd команда после разбора RawCmd.
+type Cmd struct {
+	id   CmdID
+	args Args
+}
+
+func NewCmd(id CmdID, args Args) Cmd {
+	return Cmd{
+		id:   id,
+		args: args,
+	}
+}
+
+func (c Cmd) ID() CmdID {
+	return c.id
+}
+
+func (c Cmd) Args() Args {
+	return c.args
+}
+
+func (c Cmd) Arg(idx int) Arg {
+	return c.args[idx]
+}
+
+const marshalDelimiter = " "
+
+func (c Cmd) Marshal() string {
+	str := cmdToRawCmd[c.id].String()
+
+	for _, arg := range c.args {
+		str += marshalDelimiter + arg.String()
+	}
+
+	return str
+}
+
+type Args []Arg
+
+func NewArgs(in []string) Args {
+	args := make([]Arg, len(in))
+
+	for i := range in {
+		args[i] = Arg(in[i])
+	}
+
+	return args
+}
+
+type Arg string
+
+func (a Arg) String() string {
+	return string(a)
 }

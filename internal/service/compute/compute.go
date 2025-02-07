@@ -7,7 +7,7 @@ import (
 )
 
 type cmdParser interface {
-	ParseCmd(logger *slog.Logger, rowCmd string) (command.Query, error)
+	ParseCmd(*slog.Logger, command.RawCmd) (command.Cmd, error)
 }
 
 type Compute struct {
@@ -20,6 +20,6 @@ func New(p cmdParser) *Compute {
 	}
 }
 
-func (h Compute) ParseCmd(logger *slog.Logger, rowCmd string) (command.Query, error) {
+func (h Compute) ParseCmd(logger *slog.Logger, rowCmd command.RawCmd) (command.Cmd, error) {
 	return h.p.ParseCmd(logger, rowCmd)
 }
